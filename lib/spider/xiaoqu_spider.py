@@ -16,6 +16,7 @@ from lib.zone.area import *
 from lib.utility.log import *
 import lib.utility.version
 
+build_year_extract_re = re.compile(r'([0-9]{4}年建成)')
 
 class XiaoQuBaseSpider(BaseSpider):
     def collect_area_xiaoqu_data(self, city_name, area_name, fmt="csv"):
@@ -84,14 +85,20 @@ class XiaoQuBaseSpider(BaseSpider):
                 price = house_elem.find('div', class_="totalPrice")
                 name = house_elem.find('div', class_='title')
                 on_sale = house_elem.find('div', class_="xiaoquListItemSellCount")
+                position_info = house_elem.find('div', class_="positionInfo")
 
                 # 继续清理数据
                 price = price.text.strip()
                 name = name.text.replace("\n", "")
                 on_sale = on_sale.text.replace("\n", "").strip()
+                try:
+                    build_year = build_year_extract_re.search(position_info.contents[-1]).groups()[0]
+                except AttributeError:
+                    build_year='NaN'
+                print("小区：%s，建成年份：%s,price:%s" % (name, build_year, price))
 
                 # 作为对象保存
-                xiaoqu = XiaoQu(chinese_district, chinese_area, name, price, on_sale)
+                xiaoqu = XiaoQu(chinese_district, chinese_area, name, price, on_sale, build_year)
                 xiaoqu_list.append(xiaoqu)
         return xiaoqu_list
 
@@ -99,6 +106,10 @@ class XiaoQuBaseSpider(BaseSpider):
         city = get_city()
         self.today_path = create_date_path("{0}/xiaoqu".format(SPIDER_NAME), city, self.date_string)
         t1 = time.time()  # 开始计时
+
+        # # for test
+        # area_dict['gumei'] = 'minhang'
+        # areas = list(['gumei'])
 
         # 获得城市有多少区列表, district: 区县
         districts = get_districts(city)
